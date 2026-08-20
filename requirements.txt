@@ -1,0 +1,30 @@
+# Pinned to the versions this pipeline was developed and verified against.
+# AIF360 0.6.1 predates this stack, so the combination below is deliberate rather
+# than incidental - Reweighing, ClassificationMetric and EqOddsPostprocessing were
+# all tested working against these exact versions.
+#
+# Python 3.13
+
+# Core scientific stack
+numpy==2.4.6
+pandas==3.0.5
+scipy==1.18.0
+scikit-learn==1.9.0
+joblib==1.5.3
+matplotlib==3.11.1
+seaborn==0.13.2
+
+# Models
+xgboost==3.4.0
+
+# Fairness
+aif360==0.6.1
+
+# Explainability
+shap==0.52.0
+
+# Notebook environment
+jupyterlab==4.6.2
+# Held below 7.x: ipykernel 7 is a major rewrite and the VS Code Jupyter extension
+# is better tested against the 6.x line.
+ipykernel==6.31.0
