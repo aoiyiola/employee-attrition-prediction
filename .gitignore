@@ -24,3 +24,8 @@ data/processed/*
 
 # Word lock files
 ~$*
+
+# Private working files, kept locally and not published
+Dissertation*.docx
+dissertation-summary.md
+PROGRESS.md
