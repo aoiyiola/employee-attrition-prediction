@@ -1,97 +1,92 @@
 # Fairness Audit of Employee Attrition Models
 
-**Do HR attrition models treat employees evenly, and what does it cost to fix them when they don't?**
+**Companies use machine learning to predict which employees are likely to leave. But do those predictions treat everyone fairly?**
 
-This project trains four attrition classifiers on the IBM HR Analytics dataset. It audits them for bias across age, gender and marital status, tests two bias-mitigation strategies, and checks whether SHAP explainability can show where unfair treatment sits.
+This project builds four models that predict employee attrition, meaning which employees are likely to leave. It then tests whether the models treat people differently because of their **age, gender or marital status**. It also tries two ways of correcting unfair treatment and measures what each one costs in accuracy.
 
-`Python` · `scikit-learn` · `XGBoost` · `AI Fairness 360` · `SHAP` · `pandas` · `Matplotlib` · `Jupyter`
+**Tools:** Python · scikit-learn · XGBoost · AI Fairness 360 · SHAP · pandas · Matplotlib · Jupyter
 
 ---
 
 ## Key findings
 
-- **Bias was measurable, and it always ran against the less advantaged group.** 11 of 36 fairness checks showed a statistically significant disparity. They were concentrated on **age** and appeared in **all four models**.
-- **Simpler models were no fairer.** The widest gap, about **21 percentage points** in statistical parity, came from Logistic Regression, the strongest model on recall and PR-AUC.
-- **Every fairness gain had a predictive cost.** Reweighing closed **6 of 11** disparities for a 0.005 drop in balanced accuracy. Equalised odds closed **all 11** for 0.041, which is about 3× the fairness gain for about 8× the cost.
-- **SHAP importance did not show where the unfairness was.** The correlation between a protected attribute's SHAP rank and its measured disparity ranged from **−0.565 to +0.268**, depending on the fairness metric. Bias travelled through correlated proxies such as job level, income and tenure.
+- **The models were unfair, mostly to younger employees.** I ran 36 fairness checks in total. 11 found a real difference in treatment, and every one of those disadvantaged the less advantaged group, mainly employees under 40 and unmarried employees. All four models showed this to some degree.
+- **The easiest model to explain was no fairer.** Logistic Regression, one of the simplest models, had the largest gap. Employees under 40 were about **21 percentage points** less likely than older colleagues to be predicted to stay.
+- **Fixing unfairness costs accuracy.** One fix removed 6 of the 11 problems and cost almost nothing in accuracy. The other removed all 11 but cost about **8 times as much** accuracy.
+- **Explanation tools didn't reveal the unfairness.** Tools that show which factors a model relies on most did not point to where it was being unfair. Much of the unfairness came through related factors such as job level, income and years of experience, which go hand in hand with age.
+- **Passing a fairness test is not the same as being useful.** One "corrected" model met the fairness standard only by predicting that 229 of 294 employees would leave.
 
-![Baseline fairness across models and protected attributes](results/figures/01_baseline_fairness.png)
+![How fairly each model treated each group](results/figures/01_baseline_fairness.png)
 
-<sub>Each bar is a 95% bootstrap confidence interval for unprivileged minus privileged, with retention as the favourable outcome. Solid marks are disparities whose interval excludes zero.</sub>
+<sub>**How to read this chart:** each row is one model, grouped by age, marital status and gender. A dot left of the centre line means the younger, unmarried or female group was treated worse. Solid dots are differences too large to be down to chance. Faded dots could be chance.</sub>
 
 ---
 
 ## Why it matters
 
-Attrition models are usually judged on accuracy alone. A model trained on historical HR records can reproduce the patterns in those records. Under the UK Equality Act 2010, that is a legal exposure as well as an ethical one. This project treats fairness as something to measure, with uncertainty, before a model is trusted.
+Prediction models learn from past records. If past HR decisions were uneven, a model can repeat that pattern at scale without anyone noticing. In the UK, treating staff differently because of age, sex or marital status can breach the **Equality Act 2010**. Unfair models are therefore a legal risk as well as an ethical one.
 
-## Questions
+## What I did
 
-1. Do trained attrition models produce measurable disparities across age, gender and marital status?
-2. How do pre-processing and post-processing mitigation compare at closing those disparities, and what do they cost in predictive performance?
-3. Does SHAP-based explainability show where unfair treatment sits?
+**1. Prepared the data.** I used 1,470 employee records from IBM's HR Analytics dataset. It is synthetic data built to resemble a real workforce, and 16% of the employees left. I cleaned the data, set 20% aside for testing, and trained the models only on the rest.
 
-## Approach
+**2. Built four prediction models.** Two are easy to explain and two are complex "black box" models. That mix lets me test whether easier-to-explain models are also fairer.
 
-```mermaid
-flowchart LR
-    A[IBM HR data<br/>1,470 employees] --> B[Clean, encode,<br/>stratified 80/20 split]
-    B --> C[4 classifiers<br/>LR · DT · RF · XGB]
-    C --> D[Measure<br/>8 performance + 3 fairness metrics<br/>bootstrap 95% CIs]
-    D --> E1[Reweighing<br/>pre-processing]
-    D --> E2[Equalised odds<br/>post-processing]
-    E1 --> F[Re-measure with<br/>the identical suite]
-    E2 --> F
-    C --> G[SHAP<br/>feature attribution]
-    G --> H[SHAP rank vs<br/>measured disparity]
-    F --> H
-```
+| Model | How it works, in plain terms | Easy to explain? |
+|---|---|---|
+| Logistic Regression | Gives each factor a weight and adds them up | Yes |
+| Decision Tree | Asks a series of yes/no questions | Yes |
+| Random Forest | Hundreds of decision trees vote on the answer | No |
+| XGBoost | Builds trees one after another, each correcting the previous one's mistakes | No |
 
-| Stage | What was done |
-|---|---|
-| **Data** | 1,470 records with a 16% attrition rate. Constant and identifier columns removed, 23 numeric features standardised and 7 categorical features one-hot encoded, giving 44 features. The preprocessor was fitted on training data only. |
-| **Models** | Logistic Regression, Decision Tree, Random Forest and XGBoost, chosen to span an interpretability gradient. Class weighting offsets the 5.2 : 1 imbalance, with a fixed seed throughout. |
-| **Fairness** | Statistical Parity, Average Odds and Predictive Parity Differences, for each model and each protected attribute (36 checks). A disparity counts only when its bootstrap CI (1,000 resamples) excludes zero. |
-| **Mitigation** | AIF360 **Reweighing** (instance weights before training) and **Equalised Odds post-processing** (group-specific thresholds after training), run per attribute: 24 mitigation runs. |
-| **Explainability** | Mean absolute SHAP values per model, then compared with each attribute's measured disparity. |
+Because only 16% of employees left, the models were set to give extra weight to the leavers so they didn't simply ignore them.
 
-All three rounds (baseline, reweighing, equalised odds) are scored by one shared measurement module, [`src/metrics.py`](src/metrics.py). That keeps the comparisons like-for-like.
+**3. Checked fairness.** I compared under-40s with over-40s, women with men, and unmarried with married employees. Each comparison used three common definitions of fairness:
+- Is each group equally likely to be predicted to stay?
+- Does the model make mistakes at the same rate for each group?
+- When the model says someone will stay, is it equally reliable for each group?
 
-The full method is in **[docs/methodology.md](docs/methodology.md)**.
+Four models, three groups and three definitions make 36 checks. A difference only counted if it was too large to be down to chance.
+
+**4. Tried two fixes.**
+- **Reweighing** adjusts the data before the model learns, so that each group carries fair weight.
+- **Equalised odds** adjusts the model's decisions afterwards, using a different decision cut-off for each group.
+
+**5. Tested an explanation tool.** SHAP shows which factors a model relies on most. I checked whether it points to the unfairness that the fairness checks found.
+
+For technical readers, the full method, metric definitions and limitations are in **[docs/methodology.md](docs/methodology.md)**.
 
 ---
 
 ## Results
 
-### Baseline performance
+### How well the models spotted leavers
 
-Ten-fold stratified cross-validation on the training set:
+| Model | Share of leavers correctly identified |
+|---|---|
+| Logistic Regression | **74%** |
+| XGBoost | 44% |
+| Random Forest | 35% |
+| Decision Tree | 28% |
 
-| Model | Balanced acc. | Recall | ROC-AUC | PR-AUC | Brier ↓ |
-|---|---|---|---|---|---|
-| Logistic Regression | **0.745** | **0.742** | **0.830** | **0.618** | 0.158 |
-| Decision Tree | 0.571 | 0.279 | 0.571 | 0.204 | 0.231 |
-| Random Forest | 0.658 | 0.353 | 0.799 | 0.544 | 0.117 |
-| XGBoost | 0.694 | 0.437 | 0.804 | 0.566 | **0.110** |
+Plain accuracy is misleading here. A model that predicts "nobody leaves" would be 84% accurate and completely useless. So the models were judged mainly on how many actual leavers they caught.
 
-Accuracy is misleading on this data. Decision Tree scores 0.769 accuracy, ahead of Logistic Regression's 0.747, while catching far fewer leavers. Reporting therefore leads with balanced accuracy, recall and PR-AUC.
+### What fixing unfairness costs
 
-### The fairness and performance trade-off
-
-![Fairness and performance trade-off](results/figures/04_fairness_performance_tradeoff.png)
-
-| Strategy | Disparities closed | Change in balanced accuracy |
+| Fix | Unfair results removed | Accuracy lost |
 |---|---|---|
-| Reweighing (pre-processing) | 6 of 11 | −0.005 |
-| Equalised odds (post-processing) | 11 of 11 | −0.041 |
+| Reweighing (adjust the data before learning) | 6 of 11 | About half a percentage point |
+| Equalised odds (adjust decisions afterwards) | 11 of 11 | About 4 percentage points |
 
-Equalised odds is the stronger fix but the more expensive one. One caveat: one model met the equalised-odds criterion only by flagging **229 of 294** test employees as likely to leave. That is compliant on paper and useless in practice.
+![Fairness gained against accuracy lost, for each fix](results/figures/04_fairness_performance_tradeoff.png)
 
-### Does SHAP show where the bias is?
+<sub>**How to read this chart:** each point is one fix applied to one group. Points further right are fairer. Points lower down lost more accuracy. The shaded corner, top right, means fairer at no cost.</sub>
 
-![SHAP rank against measured disparity, for all three fairness metrics](results/figures/09_shap_vs_fairness_all_metrics.png)
+### Can explanation tools spot unfairness?
 
-No, at least not reliably. Whether attributes the model leans on more look less fair, more fair or unrelated depends on which fairness metric you pick. Most of the apparent signal comes from gender, the one attribute with no disparity at all. A model can treat groups unevenly while giving the protected characteristic itself little direct attribution.
+![Do the factors a model relies on most show where it is unfair?](results/figures/09_shap_vs_fairness_all_metrics.png)
+
+<sub>**How to read this chart:** each point is one model and one group. Further left means the model relied on that characteristic more. Higher up means it treated that group more unfairly. If explanation tools revealed unfairness, the points would line up. They don't, and the pattern changes depending on which fairness definition you use.</sub>
 
 <details>
 <summary><b>More figures</b></summary>
@@ -100,21 +95,30 @@ No, at least not reliably. Whether attributes the model leans on more look less 
 |---|---|
 | Fairness after reweighing | [02_reweighing_fairness.png](results/figures/02_reweighing_fairness.png) |
 | Fairness after equalised odds | [03_equalised_odds_fairness.png](results/figures/03_equalised_odds_fairness.png) |
-| Top SHAP features, all models | [05_shap_importance_all_models.png](results/figures/05_shap_importance_all_models.png) |
-| Top SHAP features, transparent models | [06_shap_importance_transparent.png](results/figures/06_shap_importance_transparent.png) |
-| Top SHAP features, ensemble models | [07_shap_importance_ensemble.png](results/figures/07_shap_importance_ensemble.png) |
-| SHAP rank vs statistical parity | [08_shap_vs_fairness_spd.png](results/figures/08_shap_vs_fairness_spd.png) |
+| Factors each model relies on most | [05_shap_importance_all_models.png](results/figures/05_shap_importance_all_models.png) |
+| Same, easy-to-explain models only | [06_shap_importance_transparent.png](results/figures/06_shap_importance_transparent.png) |
+| Same, black-box models only | [07_shap_importance_ensemble.png](results/figures/07_shap_importance_ensemble.png) |
+| Explanation tool vs one fairness definition | [08_shap_vs_fairness_spd.png](results/figures/08_shap_vs_fairness_spd.png) |
 
 </details>
 
 ---
 
-## What this means in practice
+## What this means for organisations
 
-1. **Audit fairness before deployment.** The disparities here were invisible in standard accuracy reporting.
-2. **Report the three fairness metrics together.** They disagree, and any one of them alone can mislead.
-3. **State every fairness improvement alongside its predictive cost.** "Fairer" is only half of a claim.
-4. **Do not treat feature importance as a fairness audit.** Bias can travel through proxies that explainability tools attribute elsewhere.
+1. **Check models for fairness before using them.** These problems did not show up in normal accuracy reports.
+2. **Use more than one definition of fairness.** The definitions disagree, and relying on one can hide a problem.
+3. **Report what each fairness fix costs.** "Fairer" means little without knowing how much accuracy was given up.
+4. **Don't rely on explanation tools to find unfairness.** Bias can work through related factors that those tools don't flag.
+
+## Skills demonstrated
+
+- **Data preparation:** checking data quality, cleaning, and keeping test data completely separate from training.
+- **Predictive modelling:** building and comparing four machine learning models on an uneven dataset where only 16% of employees left.
+- **Statistical thinking:** only counting a difference as real when it is too large to be down to chance.
+- **Responsible AI:** measuring and correcting bias with IBM's AI Fairness 360, and testing explanation tools with SHAP.
+- **Communication:** turning technical results into clear charts and practical recommendations.
+- **Reproducible work:** shared, reusable measurement code, fixed settings and a ready-to-run environment.
 
 ---
 
@@ -122,29 +126,22 @@ No, at least not reliably. Whether attributes the model leans on more look less 
 
 ```
 employee-attrition-prediction/
-├── data/
-│   ├── raw/                 # IBM HR Analytics dataset (source CSV)
-│   ├── processed/           # cleaned data and train/test splits (generated, git-ignored)
-│   └── README.md            # dataset source, columns and preparation notes
+├── data/                    # the dataset and a description of it
 ├── notebooks/
-│   ├── 01_data_preparation.ipynb   # audit, cleaning, protected groups, encoding, split
-│   └── 02_model_building.ipynb     # 4 classifiers, cross-validation, baseline measurement
+│   ├── 01_data_preparation.ipynb   # cleaning the data and splitting it for testing
+│   └── 02_model_building.ipynb     # building the four models and measuring them
 ├── src/
-│   └── metrics.py           # shared performance + fairness suite with bootstrap CIs
+│   └── metrics.py           # the fairness and accuracy measurements, shared by every stage
 ├── results/
-│   ├── figures/             # all charts shown in this README
-│   ├── tables/              # metric tables (generated)
-│   ├── models/              # fitted models (generated, git-ignored)
-│   └── predictions_baseline.csv
+│   └── figures/             # all charts in this README
 ├── docs/
-│   └── methodology.md       # full method, metric definitions and limitations
-├── .devcontainer/           # reproducible Python 3.13 environment
-└── requirements.txt         # pinned dependency versions
+│   └── methodology.md       # full technical write-up
+└── requirements.txt         # software needed to run the project
 ```
 
 ## Running it
 
-Requires **Python 3.13**. Versions are pinned because AI Fairness 360 0.6.1 is sensitive to its surrounding stack.
+You need Python 3.13.
 
 ```bash
 git clone https://github.com/aoiyiola/employee-attrition-prediction.git
@@ -154,18 +151,16 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Then run the notebooks in order: `01_data_preparation` writes the train/test split that every later notebook reads. The notebooks work whether Jupyter is started from the repository root or from `notebooks/`.
-
-Alternatively, open the repository in VS Code or GitHub Codespaces and choose **Reopen in Container**. The dev container installs everything.
+Then open the notebooks in order, starting with `01_data_preparation`. Alternatively, open the project in GitHub Codespaces or VS Code and choose **Reopen in Container**, which sets everything up automatically.
 
 ## Project status
 
-Data preparation and baseline modelling are in the notebooks here. The reweighing, equalised-odds and SHAP notebooks that produced figures 02–09 are being added. Until then, those results are shown as figures.
+The data preparation and model building notebooks are included. The notebooks for the two fixes and the explanation analysis, which produced figures 02–09, are being added.
 
 ---
 
 ## About
 
-Built by **Afees Iyiola** as the research project for the MSc in Applied Artificial Intelligence and Data Analytics at the University of Bradford (2025/26).
+By **Afees Iyiola** as the research project for the MSc in Applied Artificial Intelligence and Data Analytics at the University of Bradford (2025/26).
 
-**Data:** [IBM HR Analytics Employee Attrition & Performance](https://www.kaggle.com/datasets/pavansubhasht/ibm-hr-analytics-attrition-dataset), a fictional dataset created by IBM data scientists for analytics research.
+**Data:** [IBM HR Analytics Employee Attrition & Performance](https://www.kaggle.com/datasets/pavansubhasht/ibm-hr-analytics-attrition-dataset), a synthetic dataset created by IBM data scientists for analytics research.

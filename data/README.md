@@ -4,7 +4,7 @@
 
 **IBM HR Analytics Employee Attrition & Performance**, available on [Kaggle](https://www.kaggle.com/datasets/pavansubhasht/ibm-hr-analytics-attrition-dataset).
 
-This is a fictional dataset created by IBM data scientists. It contains 1,470 employee records with 35 columns, and the binary target is `Attrition` (Yes/No). No real employees are represented.
+This is a synthetic dataset created by IBM data scientists. It contains 1,470 employee records with 35 columns, and the binary target is `Attrition` (Yes/No). No real employees are represented.
 
 ## Layout
 

@@ -57,6 +57,17 @@ The four classifiers were chosen to run from a directly readable model to opaque
 
 All models use `random_state=42`. Stability was checked with 10-fold stratified cross-validation on the training set. Each model was then refitted on the full training set and scored once on the held-out test set.
 
+**Cross-validated performance (training set, 10 folds)**
+
+| Model | Accuracy | Balanced acc. | Recall | Precision | ROC-AUC | PR-AUC | Brier ↓ |
+|---|---|---|---|---|---|---|---|
+| Logistic Regression | 0.747 | **0.745** | **0.742** | 0.363 | **0.830** | **0.618** | 0.158 |
+| Decision Tree | 0.769 | 0.571 | 0.279 | 0.286 | 0.571 | 0.204 | 0.231 |
+| Random Forest | 0.864 | 0.658 | 0.353 | 0.640 | 0.799 | 0.544 | 0.117 |
+| XGBoost | **0.868** | 0.694 | 0.437 | **0.646** | 0.804 | 0.566 | **0.110** |
+
+Accuracy ranks Logistic Regression last even though it catches by far the most leavers. The headline metrics are therefore balanced accuracy, recall and PR-AUC. Brier score measures how well-calibrated the predicted probabilities are.
+
 ## 4. Measurement suite
 
 Module: [`src/metrics.py`](../src/metrics.py)
@@ -114,7 +125,7 @@ The correlation came out at −0.565 (SPD), −0.511 (AOD) and +0.268 (PPD). The
 
 ## 8. Limitations
 
-- **Fictional data.** The IBM dataset was built by IBM data scientists for analytics research. It is useful for method development, but its group patterns are not evidence about any real workforce.
+- **Synthetic data.** The IBM dataset was built by IBM data scientists for analytics research. It is useful for method development, but its group patterns are not evidence about any real workforce.
 - **Binarised attributes.** Age is split at 40, and marital status groups single and divorced together. Different cut-offs could change which disparities appear.
 - **One attribute at a time.** Each attribute was audited and mitigated separately. Intersectional groups, such as younger single employees, were not examined.
 - **Small test set.** 294 rows with 47 leavers. The confidence intervals are wide, so some real but small disparities may not reach significance.
